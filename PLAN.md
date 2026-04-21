@@ -167,6 +167,16 @@ Three repos exceed comfortable GitHub limits:
 - [`fossettlab/.github`](https://github.com/fossettlab/.github) — org profile README grouping the 17 `xr-*` repos under headings.
 - [`fossettlab/xr-inventory`](https://github.com/fossettlab/xr-inventory) — this planning repo (public, holds `INVENTORY.md` and `PLAN.md`).
 
+## Post-migration visibility changes (2026-04-21)
+
+Apple Developer account confirmed active and GeoXplorer is still in the App Store. Flipped 2 GeoXplorer-family repos to **public**:
+- `xr-geoxplorer` (no keystore, only WSA test cert — cosmetic risk)
+- `xr-geoxplorer-mobile` (no sensitive files)
+
+**Still private, pending keystore verification:** `xr-geoxplorer-v1`, `xr-geoxplorer-se`, `xr-geoexplorer-original`. Need to verify the Play Console upload-key SHA-1 fingerprint does not match `test_keystore_7282021.keystore` (which lives in the `xr-geoxplorer-v1` repo). See project memory for the exact check procedure.
+
+Also still private: `xr-museum-viewer` (2023 provenance separate issue, unrelated to Apple).
+
 ## End-of-migration summary
 
 Pushed to `fossettlab` GitHub org: **17 `xr-*` application repos + 2 meta repos (profile + inventory) = 19 total**.
