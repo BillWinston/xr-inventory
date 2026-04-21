@@ -158,7 +158,22 @@ Three repos exceed comfortable GitHub limits:
 
 **Wave 3 — DEFERRED:** 3 oversized repos. `xr-mineral-hand-samples`, `xr-virtual-earth`, `xr-geoxplorer-assets`. Revisit LFS vs split-hosting when we decide to resurrect any of them.
 
-**Wave 4 — PENDING:** 3 repos with preserved git history. `xr-geoxplorer-v1`, `xr-dco-demo`, `xr-geoexplorer-original`. Path differs — each has an existing `.git` we want to ship with history intact, plus a new `.gitignore` and README added on top. Needs care: `.gitignore` should be a fresh commit, not rebased into history, so the original `"hirise update"` and `"UI improvements 8"` commits stay visible.
+**Wave 4 — DONE (2026-04-21):** 3 repos with preserved git history.
+- `xr-geoxplorer-v1` (private): preserved 28 commits of `hirise update` history from 2018 plus new cleanup commit `67e8e0fb` on top. Original remote was `martinjpratt/GeoXplorer` (removed). Appended 2026 archive note to existing README.
+- `xr-dco-demo` (public): preserved `UI improvements 1…8` series from 2019 plus new cleanup commit `f3fb95e`. Original remote was `martinjpratt/DemoForDCO` (removed). Contains 85 MB TIFF (`EMAG2_V3_SeaLevel_DataTiff.tif`, magnetic-anomaly sea-level grid) — under GitHub's 100 MB hard limit, accepted with size warning.
+- `xr-geoexplorer-original` (private): no prior git, Wave 2 pattern. Reference only. Contains TriLib plugin binaries at 53–74 MB each — accepted with warnings.
+
+**Additional repos created on 2026-04-21:**
+- [`fossettlab/.github`](https://github.com/fossettlab/.github) — org profile README grouping the 17 `xr-*` repos under headings.
+- [`fossettlab/xr-inventory`](https://github.com/fossettlab/xr-inventory) — this planning repo (public, holds `INVENTORY.md` and `PLAN.md`).
+
+## End-of-migration summary
+
+Pushed to `fossettlab` GitHub org: **17 `xr-*` application repos + 2 meta repos (profile + inventory) = 19 total**.
+
+Remaining on NAS only (not on GitHub):
+- 3 oversized repos (Wave 3, deferred): `GeoXAssetBundles` (48 GB), `MineralHandSamples` (5.3 GB), `VirtualEarth` (4.2 GB).
+- 11 archived-local projects at `/mnt/nas/dev/fossett_xr_apps/_archive/`: `GeoXplorer 2`, `geoxplorer_mobile`, `ASADemo`, `azure-spatial-anchors-samples`, `azure-spatial-anchors-samples-master`, `Unity3DTiles-master`, `Bundles`, `Demo`, `New Unity Startup Project`, `OculusGOTest`, `Sandbox`.
 
 ## Retro / deferred
 
