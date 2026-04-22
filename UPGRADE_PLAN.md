@@ -18,52 +18,57 @@ Several forces put ratcheting pressure on these projects:
 
 The ASA retirement is the biggest **active** problem — any GeoXplorer feature that relied on shared-experience anchors is already non-functional regardless of whether we upgrade Unity.
 
-## Target-stack decisions (need lab sign-off before work starts)
+## Target-stack decisions (lab direction set 2026-04-21)
 
-Four decisions gate everything else:
+### 1. Unity version — Unity 6 LTS
 
-### 1. Unity version target
+Decision: **Unity 6 LTS** (not Unity 2022.3).
 
-| Option | Pros | Cons |
-|---|---|---|
-| **Unity 2022.3 LTS** | Mature (2+ years in-field), full asset-store support, MRTK 3 officially targets it, AR Foundation 5 shipped on it. LTS support through 2025 + 2 years of security updates after. | Shorter remaining shelf life. Two upgrades-from-now. |
-| **Unity 6 LTS** (released mid-2024) | Longer support runway, newer render pipeline, better ARM/Apple Silicon support. | Newer ecosystem — some third-party packages haven't caught up. MRTK 3 support is catching up but not as battle-tested. |
-| Unity 6.1 / 6.2 non-LTS | Latest features | No LTS guarantees. Avoid. |
+Rationale: now that the lab has committed to Quest 3 as the sole HMD (see §4 below), Meta's XR SDK roadmap points at Unity 6. Meta XR SDK v65+ adds Quest-specific features (depth API, MR Utility Kit, scene understanding v2) that target Unity 6 as their primary platform; Unity 2022.3 support on those features lags or is frozen. For mobile AR, Unity 6 is a clean AR Foundation 6 landing spot. The ecosystem-maturity argument that favored 2022.3 a year ago is thinner now.
 
-**Recommendation: Unity 2022.3 LTS for the first wave of upgrades.** Lowers risk for projects that need to Just Build. Revisit Unity 6 for any project that needs >2 years of forward runway.
+Caveat: any third-party package critical to a specific project needs a Unity-6 compatibility check before we start the upgrade for that project.
 
-### 2. HoloLens-era toolkit replacement
+### 2. XR toolkit — Meta XR SDK (All-in-One) + OpenXR
 
-HoloToolkit is 10+ years dead. MRTK v2 is in maintenance. Options for HoloLens-family work:
+Decision: **Meta XR All-in-One SDK** on OpenXR. Drop MRTK 3 from the plan entirely.
 
-- **MRTK 3** (on OpenXR): Microsoft's current toolkit, cross-platform OpenXR support (HoloLens 2, Quest 3, Vive, etc.). Most code-compatible upgrade path from MRTK 2.
-- **Raw OpenXR + lightweight utilities**: skip MRTK entirely, use Unity's XR Interaction Toolkit directly. Thinner, future-proof, but more custom integration work.
+Rationale: the earlier MRTK 3 recommendation assumed we were keeping HoloLens. With HoloLens dropped and Quest 3 as the sole HMD, MRTK 3 is a cross-platform abstraction we don't need. Going Meta-native gets us:
 
-**Recommendation: MRTK 3.** The existing projects are already organized around MRTK-style interaction patterns; MRTK 3 lets us keep the conceptual model.
+- Passthrough MR APIs that just work (HoloLens-style world-anchored content is done differently on Quest 3's video passthrough; Meta's SDK handles the differences).
+- Scene understanding (Meta MR Utility Kit) for room geometry, which replaces HoloLens spatial-mapping workflows in a Quest-idiomatic way.
+- Hand tracking v2.3+ directly supported without a translation layer.
+- Building Blocks (Meta's prefab-based template system) as starting points for common patterns.
 
-### 3. Azure Spatial Anchors replacement
+Trade: if we ever need another HMD (Vision Pro, PSVR2, next-gen HTC) we'd pay an integration cost. Acceptable given the Quest-only commitment.
 
-ASA is gone. For shared-experience / cloud-anchor features:
+### 3. Shared-experience / Azure Spatial Anchors — drop by default, investigate before replacing
 
-| Option | Fit for lab use case |
-|---|---|
-| **Niantic Lightship VPS** | Commercial, strong localization, has a free tier for research. Our most direct replacement for "persistent anchored content in the real world." |
-| **Google Cloud Anchors (via AR Foundation)** | Lighter-weight, session-scoped shared anchors. Free. Mobile-only (no HoloLens). |
-| **Self-hosted anchor system** | Full control, but substantial engineering. Probably not worth it. |
-| **Drop multi-user features** | Reduces GeoXplorer to single-user exploration. Acceptable if the multi-user use case was never heavily used. |
+Decision: **drop multi-user features for the first pass of every upgrade.** The ASA service is retired so the existing code is already non-functional, and the GeoXplorer apps work as single-user experiences.
 
-**Recommendation: start with "drop multi-user"** to unblock the single-user upgrade path for GeoXplorer mobile. Add cloud anchors back later via Google Cloud Anchors (AR Foundation) if the use case justifies it. Niantic VPS is overkill unless there's a specific outdoor-AR project.
+**Open investigation (added today):** what was the multi-user feature actually used for? We have three codepaths that used it — `xr-geoxplorer`, `xr-geoxplorer-mobile`, `xr-geoxplorer-se` ("SE" = shared experience). Before we decide whether to rebuild shared-experience, someone should spend ~half a day on:
+- Reading the README and commit messages in the `xr-geoxplorer-se` repo (preserved git history) to see what the original author intended.
+- Searching for any published paper, poster, or talk that referenced GeoXplorer's multi-user capability.
+- Talking to the departing dev's mentor or a lab member who saw it in use.
+- If no one remembers it being used: leave dropped.
+- If it was core to a teaching moment or research demo: plan for a rebuild.
 
-### 4. HoloLens hardware future
+Replacement options if we decide shared-experience matters:
+- **Meta Shared Spatial Anchors** (best fit for Quest 3). Local-network co-location, free, part of the Meta SDK. Direct replacement for the co-located classroom-demo use case.
+- **Photon Fusion** or **Unity Netcode for GameObjects** for networked state sync. Both are alive and well. Photon PUN (what the old code used) is legacy and should be replaced by Fusion on any rewrite.
+- **Google Cloud Anchors via AR Foundation** — only if we also need cross-device anchor sharing on mobile AR, and only if the outdoor-AR use case justifies it.
 
-Open question for the lab, not something this plan resolves:
+### 4. HMD target — Quest 3 only
 
-- Continue targeting HoloLens 2 (supported through 2027, existing lab hardware)?
-- Add Quest 3 / Quest Pro targets (cheaper, consumer-grade, strong Unity support)?
-- Add Apple Vision Pro (visionOS, separate SDK entirely)?
-- Pivot primary XR work to mobile AR (broadest reach, no headset cost)?
+Decision: **Quest 3 only for headset-based XR.** HoloLens support dropped entirely.
 
-Recommend making this call before committing to the full HoloLens MRTK 3 port.
+Implications:
+- All HoloLens-only projects need to decide: port to Quest 3 (if the use case benefits from a headset), port to mobile AR (if phone/tablet is fine), port to desktop (if XR isn't essential), or retire.
+- The remaining-private GeoXplorer-family repos (`xr-geoxplorer-v1`, `xr-geoxplorer-se`, `xr-geoexplorer-original`) lose their "might revive on HoloLens" rationale. They're reference-only going forward; the useful work moves into Quest 3 ports.
+- Mobile AR remains important — not everyone has a Quest 3 — but it's a separate deliverable, not a fallback for the HMD version.
+
+### 5. Per-project target-platform decision
+
+Every project now needs a platform target: **Quest 3**, **Mobile AR (iOS + Android)**, **Desktop**, or **Retire**. Triage table below.
 
 ## Triage framework
 
@@ -79,96 +84,134 @@ Is there a current user (teaching / research / store listing)?
     └── No  → RETIRE (delete / consolidate, keep INVENTORY entry)
 ```
 
-## Per-project triage
+## Per-project triage (Quest 3 / Mobile AR / Desktop)
 
 Effort tiers: **S** (1–3 days), **M** (1–2 weeks), **L** (3–6 weeks), **XL** (rewrite / 6+ weeks).
 
-### Priority 1 — store-relevant or active-use candidates
+Every project gets a platform decision plus an action verdict. Platform choices:
+- **Quest 3** — headset-immersive use cases that benefit from room-scale + stereo depth + passthrough MR.
+- **Mobile AR** — phone/tablet reach via AR Foundation (iOS + Android). Best for teaching where everyone in the room has a device.
+- **Desktop** — flat-screen Unity when XR isn't essential.
+- **Retire** — not worth rebuilding.
 
-| Repo | Unity | Platform | Blockers | Effort | Verdict |
-|---|---|---|---|---|---|
-| `xr-geoxplorer-mobile` | 2019.4 | iOS + Android (AR Foundation) | Android SDK 29 → 34+, iOS SDK update, AR Foundation 4 → 6, Apple Dev account still active, bundle ID intact. App is currently in App Store. | **M** | **UPGRADE.** Highest-value single project in the portfolio. Reclaims the store listing. |
-| `xr-geoxplorer` | 2019.4 | HoloLens + mobile (MRTK 2 + Photon + ASA) | MRTK 2 → 3, ASA removal, Unity 2019.4 → 2022.3, Photon version check. | **L** | **UPGRADE** or **REWRITE**, lab decision. Rewriting lets us drop baggage from the attempted HoloLens / mobile unification if we're willing to go single-platform first. |
-| `xr-geoxplorer-se` | 2019.2 | HoloLens (MRTK 2 + Photon + ASA) | Same as `xr-geoxplorer`. Unclear whether "shared experience" is differentiated from `xr-geoxplorer` or just a variant of it. | **L** | **CONSOLIDATE** into `xr-geoxplorer` if the SE variant no longer has a distinct purpose. Otherwise same L upgrade path. |
+### Priority 1 — store-relevant and high-value
 
-### Priority 2 — teaching/research tools with clear domain value
-
-| Repo | Unity | Platform | Effort | Verdict |
+| Repo | Current | Target platform | Effort | Verdict |
 |---|---|---|---|---|
-| `xr-kilauea-sono` | 2017.4 | Desktop | **S** | **UPGRADE** if used in teaching. No toolkit dependencies; mostly a Unity version bump. |
-| `xr-3d-phase-diagrams` | 2017.4 | Desktop | **S–M** | **UPGRADE** if used in teaching. Desktop-only, some scripting to review. |
-| `xr-crystalviewer` | 2017.1 | HoloLens (HoloToolkit) | **XL** | **REWRITE** in Unity 2022.3 + MRTK 3. HoloToolkit is too far gone; easier to rewrite than lift-and-shift. |
-| `xr-mineral-hand-samples` | 2019.2 | HoloLens/UWP + AssetBundles | **L** | **UPGRADE** if mineralogy-teaching use is current. Content (~30 FBX specimens) is valuable. Deferred from migration Wave 3 — need LFS or hybrid hosting. |
-| `xr-volcano-viewer` | 2017.4 | HoloLens (HoloToolkit) | **XL** | **REWRITE** or **RETIRE.** HoloToolkit origin, limited clear use case. |
-| `xr-rover-traverse` | 2017.4 | HoloLens (HoloToolkit) | **L–XL** | **UPGRADE** if rover-traverse research is active; otherwise **ARCHIVE.** |
-| `xr-lro-asset-bundles` | 2019.2 | HoloLens/UWP + AssetBundles | **M–L** | **UPGRADE** if lunar-exploration use is current. Asset-bundle pipeline adds complexity. |
+| `xr-geoxplorer-mobile` | Unity 2019.4, AR Foundation, iOS+Android. In App Store as `com.FossettLab.GeoXplorer` | **Mobile AR** (unchanged) | **M** | **UPGRADE** to Unity 6 + AR Foundation 6 + Android SDK 34+ + iOS 17 SDK. Highest single-project ROI — reclaims the live store listing. Strip any ASA code (multi-user). |
+| `xr-geoxplorer` | Unity 2019.4, MRTK 2 + Photon + ASA, HoloLens-primary | **Quest 3** (new) + **Mobile AR** (keep via `xr-geoxplorer-mobile`) | **L** | **PORT to Quest 3.** Unity 6 + Meta XR SDK rewrite of the interaction layer. Reuse scenes, data loaders, geoscience content. Drop multi-user unless the investigation (below) shows we need it. |
+| `xr-geoxplorer-se` | Unity 2019.2, MRTK 2 + Photon + ASA — "shared experience" HoloLens variant | — | **—** | **CONSOLIDATE** — fold any unique content into `xr-geoxplorer`, then treat as archive. Its reason-for-being was the ASA+Photon co-located demo, which we're dropping (possibly adding back via Meta Shared Spatial Anchors if the investigation shows value). |
+
+### Priority 2 — teaching / research tools with clear domain value
+
+Platform choice matters here: Quest 3 is elegant but limited to whoever is wearing the headset. Mobile AR reaches every phone in the classroom. Desktop works in a browser-less context. Default to mobile AR for teaching reach unless there's a specific depth/stereo argument.
+
+| Repo | Current | Recommended platform | Effort | Verdict |
+|---|---|---|---|---|
+| `xr-kilauea-sono` | Unity 2017.4, desktop | **Desktop** (unchanged) | **S** | **UPGRADE** Unity version only. No XR component; classroom-friendly as a desktop app. |
+| `xr-3d-phase-diagrams` | Unity 2017.4, desktop | **Desktop** primary + optional **Mobile AR** companion | **S–M** | **UPGRADE** for desktop. Mobile-AR version would be a nice-to-have but desktop is sufficient for teaching. |
+| `xr-crystalviewer` | Unity 2017.1, HoloToolkit HoloLens | **Mobile AR** (change) | **XL** | **REWRITE** as a mobile-AR crystal viewer. Crystals are inherently hand-held-scale — phone AR is a better fit than a Quest 3 session, and reaches every student. |
+| `xr-mineral-hand-samples` | Unity 2019.2, HoloLens/UWP | **Mobile AR** (change) | **L** | **PORT** to mobile AR. 30 FBX specimens, already asset-bundled. Same argument as `xr-crystalviewer` — specimen-scale content fits phone-held form factor. Resolves the "Wave 3 deferred" question if we drop compiled bundles and rebuild. |
+| `xr-lro-asset-bundles` | Unity 2019.2, HoloLens/UWP | **Quest 3** (change) + **Desktop** companion | **L** | **PORT** to Quest 3 if planetary-science revival is active — Apollo landing sites benefit from headset-immersive scale. Mobile version would feel cramped; desktop is viable as fallback. |
+| `xr-rover-traverse` | Unity 2017.4, HoloToolkit | **Quest 3** (change) | **L–XL** | **PORT** if active, **ARCHIVE** if not. Rover path at scale is well-suited to Quest 3 passthrough + room-scale. |
+| `xr-volcano-viewer` | Unity 2017.4, HoloToolkit | **Quest 3** or **Desktop** | **XL** | **REWRITE** or **RETIRE.** `VideoCaptureLib` dependency is defunct. Depends on whether a specific volcano-teaching or research use case still needs it. |
 
 ### Priority 3 — specialized or unclear use
 
-| Repo | Unity | Platform | Effort | Verdict |
+| Repo | Current | Recommended platform | Effort | Verdict |
 |---|---|---|---|---|
-| `xr-intermediate-triggering` | 2019.2 | HoloLens (MRTK 2 + Photon) | **L** | **INVESTIGATE then decide.** Purpose not documented; may be scratch work. Probably retire. |
-| `xr-virtual-earth-2` | 2017.4 | HoloLens (HoloToolkit) | **XL** | **REWRITE** or **RETIRE.** Bing/VirtualEarth integration likely needs a current replacement (Cesium? Google Maps Platform?). |
-| `xr-dco-demo` | 2017.4 | HoloLens + WebGL | **L–XL** | **UPGRADE** if DCO connection is still relevant; else **ARCHIVE.** WebGL adds its own upgrade burden. |
-| `xr-museum-viewer` | 2017.4 | HoloLens (HoloToolkit) | **M–L** | Depends on who's using the museum content. If active, **REWRITE** as a mobile-AR viewer (artifacts are inherently portable-viewer content). If inactive, **ARCHIVE.** |
+| `xr-intermediate-triggering` | Unity 2019.2, MRTK 2 + Photon HoloLens | — | **—** | **RETIRE** unless someone can explain what it was. Name suggests experimental scratch work; no README; no clear domain content. |
+| `xr-virtual-earth-2` | Unity 2017.4, HoloToolkit HoloLens | **Quest 3** or **Retire** | **XL** | **REWRITE** from scratch in Unity 6 + Meta XR SDK + [Cesium for Unity](https://cesium.com/platform/cesium-for-unity/) (which replaces the old Bing VirtualEarth dependency cleanly). Only justified if globe-scale geospatial viewing is a lab-active use case. |
+| `xr-dco-demo` | Unity 2017.4, HoloLens + WebGL. Original git 2019 | **Desktop** or **Retire** | **L** | Depends on whether DCO demo is still something the lab shows. If yes: upgrade desktop-only Unity. Drop HoloLens + WebGL targets. If not: **ARCHIVE.** |
+| `xr-museum-viewer` | Unity 2017.4, HoloToolkit | **Mobile AR** or **Desktop** | **M–L** | Depends on who's using the 2023 museum content. If active, **REWRITE** as mobile AR (museum artifacts are inherently shareable-on-phone content). If inactive, **ARCHIVE.** |
 
-### Priority 4 — retire / archive as-is
+### Priority 4 — archive or retire (no upgrade)
 
 | Repo | Verdict | Rationale |
 |---|---|---|
-| `xr-geoxplorer-v1` | **ARCHIVE** (no upgrade) | Historical reference. `xr-geoxplorer` is the successor. Git history preserved. |
-| `xr-geoexplorer-original` | **ARCHIVE** (no upgrade) | Predecessor to `xr-geoxplorer-v1`. Reference only. |
-| `xr-meltcomplex` | **RETIRE** or rewrite from scratch | Unity 5.4-HTP era, 2017 source. Full ground-up rebuild is cheaper than upgrade. |
-| `xr-seismicity-viewer` | **RETIRE** or rewrite from scratch | Unity 5.5, 2017 source. Same reasoning. |
+| `xr-geoxplorer-v1` | **ARCHIVE** | Historical HoloLens reference. Superseded by Quest 3 port. |
+| `xr-geoexplorer-original` | **ARCHIVE** | Predecessor. Reference only. |
+| `xr-meltcomplex` | **RETIRE** | Unity 5.4-HTP HoloLens. Rewrite from scratch if ever needed. |
+| `xr-seismicity-viewer` | **RETIRE** | Unity 5.5 HoloLens. Same reasoning. |
 
-### Deferred (Wave 3) — decide later
+### Deferred-hosting (Wave 3 of migration, not upgrade)
 
 | Repo | Why deferred |
 |---|---|
-| `xr-geoxplorer-assets` | 48 GB compiled asset bundles; needs a hosting strategy independent of the Unity upgrade question. |
-| `xr-virtual-earth` | 4.2 GB. Blocked on same hosting strategy + on whether `xr-virtual-earth-2` is the head. |
+| `xr-geoxplorer-assets` | 48 GB compiled asset bundles. Hosting strategy decision independent of Unity upgrade. If we're moving to Quest 3 via Meta XR SDK, the old HoloLens-targeted AssetBundles likely need regeneration anyway. |
+| `xr-virtual-earth` | 4.2 GB. Obsoleted by `xr-virtual-earth-2` decision — if we retire/rewrite v2, v1 also retires. |
 
-## Common migration work (reusable across HoloLens projects)
+## Common migration work (reusable across projects)
 
-Instead of treating each MRTK-based project as a separate upgrade, establish shared patterns:
+Each upgrade is project-specific, but shared foundations avoid redoing setup per repo:
 
-1. **`fossettlab/xr-geoxplorer`** as the reference upgrade. First project to go through the full pipeline; everything learned informs the others.
-2. **Document a "HoloLens → MRTK 3 recipe"** in the `xr-inventory` repo: which Unity packages to add, which to remove, how to map HoloToolkit/MRTK2 prefabs to MRTK 3 equivalents, how to handle input/gaze/hand-tracking rewiring.
-3. **Shared `.gitattributes` + `.gitignore`** for all Unity repos (LFS patterns, Library/, obj/, etc.).
-4. **Optional: a "Fossett XR template" Unity project** with MRTK 3 + AR Foundation + lab code-style pre-configured. Future projects start from this template, don't rebuild from scratch.
+1. **`fossettlab/xr-geoxplorer-mobile`** as the reference mobile-AR upgrade (Phase A). Its recipe — Unity 6 + AR Foundation 6 + Android SDK 34 + iOS 17 + deep-link scheme — carries directly into `xr-crystalviewer`, `xr-mineral-hand-samples`, `xr-museum-viewer` when those go mobile-AR.
+2. **`fossettlab/xr-geoxplorer`** as the reference Quest 3 port (Phase B). Its recipe — Unity 6 + Meta XR All-in-One SDK + OpenXR + Building Blocks + (optional) Meta Shared Spatial Anchors — carries into the other Quest 3 ports.
+3. **Document both recipes** in `fossettlab/xr-inventory` as they're worked out. Future projects start from a known-good template instead of re-learning the stack.
+4. **"Fossett XR template" starter projects** (optional but recommended once the two reference upgrades are done): one for Unity 6 + Meta XR + Quest 3, one for Unity 6 + AR Foundation 6 + mobile. A new lab project starts from the template, not from scratch.
+5. **Shared `.gitattributes` + `.gitignore`** across all Unity repos, with Git-LFS patterns for large binary assets (FBX, PNG, TIF, WAV, Blend) agreed once and applied uniformly.
 
 ## Sequencing proposal
 
-**Phase A: Unblock the store app (highest ROI).**
-- `xr-geoxplorer-mobile` — Unity 2019.4 → 2022.3 LTS, Android SDK 29 → 34, iOS deployment target update, AR Foundation 4 → 5 or 6. Strip any ASA dependency if present. Target: republish to App Store + Play Store.
-- Effort estimate: ~2–4 weeks of Unity-capable dev time.
+**Phase A — Unblock the App Store app.**
+- `xr-geoxplorer-mobile` — Unity 2019.4 → **Unity 6**, AR Foundation 4 → 6, Android SDK 29 → 34+, iOS deployment target → 17+. Strip any ASA code (there may not be any in this mobile-only repo, verify first). Republish to App Store + Google Play. Keeps the live store listing.
+- Effort: ~2–4 weeks of Unity-capable dev time. Good first project for a CS undergrad learning Unity + AR Foundation; needs occasional senior review on store-submission details.
+- Deliverable: one signed `.aab` in Play Console internal testing, one `.ipa` in TestFlight. Then public release once validated.
 
-**Phase B: Reference HoloLens upgrade.**
-- `xr-geoxplorer` — full MRTK 2 → 3 migration on Unity 2022.3. Drop multi-user ASA dependency; document pattern. Possibly consolidate `xr-geoxplorer-se` into this.
-- Effort estimate: 4–8 weeks.
+**Phase B — Quest 3 port of GeoXplorer.**
+- `xr-geoxplorer` — new Unity 6 project built on **Meta XR All-in-One SDK**. Port the scenes, data loaders, and geoscience content from the existing Unity 2019.4 project; rewrite the interaction layer against Meta's Building Blocks and hand-tracking APIs. Drop all ASA / Photon / MRTK dependencies. Leave a `MULTIUSER.md` note in the repo so a future rebuild knows to start with Meta Shared Spatial Anchors if multi-user comes back.
+- Effort: 4–8 weeks. More senior dev effort than Phase A; Meta XR SDK has a learning curve on MR-specific patterns (passthrough, scene understanding, hand pose semantics).
+- Deliverable: a Quest 3 build sideloadable via SideQuest, feature-complete vs the Unity 2019.4 HoloLens single-user mode.
+- Parallel investigation: the multi-user-use-case investigation described in §3 of target-stack decisions. If findings say multi-user matters, add a `MULTIUSER-plan.md` to this repo and budget ~3-4 additional weeks for the Meta Shared Spatial Anchors integration before public release.
 
-**Phase C: Teaching-tool quick wins.**
-- `xr-kilauea-sono`, `xr-3d-phase-diagrams` — desktop Unity upgrades, each S-effort. Low risk, classroom-visible results.
+**Phase C — Teaching-tool quick wins.**
+- `xr-kilauea-sono` — desktop Unity 2017.4 → Unity 6 upgrade. S-effort. Classroom-friendly deliverable.
+- `xr-3d-phase-diagrams` — same. S–M effort.
+- Good parallel work for the undergrad while Phase B is in flight (different enough that they won't step on each other).
 
-**Phase D: Rewrite or retire the HoloToolkit-era projects** based on lab use cases. Decisions driven by whether anyone is actively using them, not by "can we upgrade them."
+**Phase D — Mobile AR ports.**
+- `xr-crystalviewer` — new Unity 6 mobile AR rewrite. Crystals are phone-scale content; classroom reach beats Quest 3 lock-in.
+- `xr-mineral-hand-samples` — same pattern. ~30 FBX specimens imported into the new mobile-AR template.
+- `xr-museum-viewer` — same, if provenance check confirms it's Fossett-Lab-appropriate content.
+- Effort per project after the Phase A recipe exists: M each.
 
-**Phase E: Asset-bundle / large-repo projects** (`xr-geoxplorer-assets`, `xr-mineral-hand-samples`, `xr-virtual-earth`) — deferred, decide on hosting strategy first.
+**Phase E — Quest 3 content ports (as needed).**
+- `xr-lro-asset-bundles` — Quest 3 port if lunar-exploration revival is active.
+- `xr-rover-traverse` — Quest 3 port if rover research is active.
+- `xr-volcano-viewer` — Quest 3 or desktop, if needed.
+- Each is a "pick up when there's a use case" candidate, not something we schedule speculatively.
+
+**Phase F — Retirements and decisions-by-absence.**
+- `xr-meltcomplex`, `xr-seismicity-viewer`, `xr-intermediate-triggering` — retire unless someone steps up.
+- `xr-virtual-earth`, `xr-virtual-earth-2` — decide based on whether globe-scale geospatial viewing is still active lab work.
+- `xr-dco-demo` — decide based on DCO engagement.
+- `xr-geoxplorer-se`, `xr-geoxplorer-v1`, `xr-geoexplorer-original` — remain as archive-only reference repos.
 
 ## Tooling & process
 
-- **Unity licensing:** each developer needs a Unity Pro or Student license. Free Unity Personal works under certain revenue/team size thresholds.
-- **CI builds:** GitHub Actions + [GameCI](https://game.ci/) can do headless Unity builds per push. Useful once Phase A completes; premature for archived projects.
-- **Branch strategy:** `main` = last-known-good (current archived state). `upgrade/unity-2022` or similar for each project's upgrade work. Merge only when the upgrade build passes.
-- **Testing:** minimal — HMD hands-on smoke tests per project is enough; no unit tests existed in the originals. If any project goes back into the App Store, add TestFlight beta + Google Play Internal Testing for sanity checks before public release.
+- **Unity licensing:** free Unity Personal works for educational lab use under the current revenue/team-size thresholds. Unity Student is an alternative route for the undergrad. Pro licenses not needed.
+- **Quest 3 dev hardware:** the lab needs at least one Quest 3 for the dev to use. If there isn't one already, budget ~$500. Sideloading via [SideQuest](https://sidequestvr.com) or Meta's own "Developer Hub" for testing builds.
+- **Apple Developer Program membership** ($99/yr) required for App Store republish. Status confirmed active as of 2026-04.
+- **Google Play Console account** ($25 one-time, presumably already exists from the original publish).
+- **CI builds:** GitHub Actions + [GameCI](https://game.ci/) can do headless Unity builds per push. Worth adding once Phase A completes (store builds benefit most from CI consistency). Skip for archived projects.
+- **Branch strategy per repo:** `main` = current (archived) state. Each upgrade goes on a branch like `upgrade/unity-6-meta-xr` or `port/quest3`. Squash-merge only when the build passes and someone has smoke-tested on-device.
+- **Testing:** minimal formal testing. Per-project smoke-test checklist (does it launch? hand tracking work? core interaction flow work? no obvious visual glitches in passthrough?). Add TestFlight beta + Google Play Internal Testing for `xr-geoxplorer-mobile` specifically before public release.
+- **Undergrad-friendly onboarding:** Phase A is a good first project (mobile AR, tractable scope, clear deliverable, existing store listing to validate against). Budget 2–4 weeks of onboarding before productive output — Unity basics + AR Foundation + store-submission pipeline. Pair-program the first-time submission to TestFlight / Play Internal Testing.
 
 ## Open decisions for the lab
 
-Before Phase A kicks off:
+Most of the big directional decisions are now made:
 
-1. **Unity version target:** 2022.3 LTS or Unity 6 LTS? (Recommend: 2022.3.)
-2. **HoloLens future:** keep HoloLens 2 as primary HMD, or pivot to Quest 3 / Vision Pro / mobile-first? (Influences Phase B onward.)
-3. **Multi-user / shared-experience ambition:** drop entirely, defer, or commit to replacing ASA with something like Google Cloud Anchors?
-4. **Who does the dev work:** you + another lab member, a PhD student hire, a contractor? Informs effort-to-calendar conversion.
-5. **App Store republish priority:** Phase A as written, or defer while the broader Fossett Lab XR strategy is worked out?
+- ✅ Unity 6 LTS
+- ✅ Meta XR SDK (Quest 3 only, no HoloLens, no MRTK 3)
+- ✅ Drop multi-user by default; investigate historical use before deciding whether to rebuild on Meta Shared Spatial Anchors
+- ✅ Phase A (`xr-geoxplorer-mobile` republish) is the first concrete deliverable
+- ✅ Primary developer: CS undergrad (interested, part-time, learning curve)
 
-None of these are urgent, but Phase A shouldn't start until at least decisions 1 and 3 are made.
+Remaining decisions, each of which can be made as that phase nears:
+
+1. **Multi-user investigation outcome.** Someone needs to figure out what the ASA + Photon "shared experience" actually did in practice. If we can't find anyone who remembers it being used, default to dropping for good. (Half-day's work; see §3 of target-stack decisions.)
+2. **Teaching-tool priority order.** Of `xr-crystalviewer`, `xr-mineral-hand-samples`, `xr-museum-viewer`, which does the lab actually want first? Depends on the teaching calendar.
+3. **Which Priority-3 projects get revived vs retired.** `xr-virtual-earth-2`, `xr-dco-demo`, `xr-rover-traverse`, `xr-lro-asset-bundles`, `xr-volcano-viewer` each need a "is anyone using this?" yes/no before they get scheduled.
+4. **Store-app republish timing.** Phase A is ready to start as soon as the undergrad is onboarded. No reason to block it on later phases.
+5. **Mentorship capacity.** Who reviews the undergrad's PRs? Who pairs on the first store submission? Lab-level decision.
