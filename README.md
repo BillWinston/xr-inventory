@@ -18,3 +18,4 @@ share, and the subsequent push to GitHub under the `fossettlab` org.
 - GitHub org: <https://github.com/fossettlab>
 - NAS source of truth: `/mnt/nas/dev/fossett_xr_apps/` on the Bradley
   Lab Synology (pliny mounts it at that path; Mac mounts `smb://<nas>/dev`).
+<!-- Smoke test PR by BillWinston, 2026-05-04 -->
