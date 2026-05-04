@@ -1,3 +1,4 @@
+<!-- Round 2 smoke test by BillWinston, 2026-05-04 -->
 # xr-inventory
 
 Planning and inventory documents for the Fossett Lab `xr-*` project
